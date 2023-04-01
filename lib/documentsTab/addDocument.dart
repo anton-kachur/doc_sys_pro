@@ -1,6 +1,5 @@
 import 'package:doc_sys_pro/main.dart';
 import 'package:doc_sys_pro/models/document.dart';
-import 'package:doc_sys_pro/models/person.dart';
 import 'package:doc_sys_pro/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,8 +8,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 class AddDocument extends StatefulWidget {
   String curr_id;
+  Map<String, String?> userData;
 
-  AddDocument({this.curr_id = ''});
+  AddDocument({this.curr_id = '', required this.userData});
 
   @override
   _AddDocumentState createState() => _AddDocumentState();
@@ -19,35 +19,47 @@ class AddDocument extends StatefulWidget {
 class _AddDocumentState extends State<AddDocument> {
   late Box<Document> _documentsBox;
   Map<String, Object> fieldValues = {
-    'name': '',
     'type': '',
     'number': '',
-    'date': '',
-    'imagePath': '',
+    'docNumber': '',
+    'dateFrom': '',
+    'dateTo': '',
+    'image': '',
+    'description': ''
   };
 
   Future _getDataFromBox() async {
-    _documentsBox = await Hive.openBox('documents');
+    _documentsBox = await Hive.openBox('your_documents');
   }
 
   void _addDocument() {
-    List<String> formattedDate = '${fieldValues['date']}'.split('-');
+    List<String> formattedDateFrom = '${fieldValues['dateFrom']}'.split('-');
+    List<String> formattedDateTo = '${fieldValues['dateTo']}'.split('-');
+
     _documentsBox.add(
         Document(
             name: '${fieldValues['name']}',
             type: '${fieldValues['type']}',
-            number: widget.curr_id == ''? '${fieldValues['number']}' : widget.curr_id,
-            date: DateTime(
-              int.parse(formattedDate.elementAt(2)),
-              int.parse(formattedDate.elementAt(1)),
-              int.parse(formattedDate.elementAt(0)),
+            number: widget.curr_id,
+            docNumber: '${fieldValues['docNumber']}',
+            dateFrom: DateTime(
+              int.parse(formattedDateFrom.elementAt(2)),
+              int.parse(formattedDateFrom.elementAt(1)),
+              int.parse(formattedDateFrom.elementAt(0)),
             ),
-            imagePath: '${fieldValues['imagePath']}'));
+            dateTo: DateTime(
+              int.parse(formattedDateTo.elementAt(2)),
+              int.parse(formattedDateTo.elementAt(1)),
+              int.parse(formattedDateTo.elementAt(0)),
+            ),
+            image: '${fieldValues['image']}',
+            description: '${fieldValues['description']}'
+        ));
   }
 
   void redirect() {
     Navigator.pop(context, false);
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (BuildContext context) => HomeScreen()));
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (BuildContext context) => HomeScreen(widget.userData)));
   }
 
   @override
@@ -118,52 +130,76 @@ class _AddDocumentState extends State<AddDocument> {
               const SizedBox(height: 8),
               
               textField(
-                  TextInputAction.newline, 
+                  TextInputAction.next, 
                   'Тип документу', 
                   null, 
                   null,
-                  TextInputType.multiline, 
+                  TextInputType.text, 
                   null, 
                   String,
                   inputValue: 'type'),
               
               const SizedBox(height: 8),
               
-              if (widget.curr_id == '')
-                textField(
-                    TextInputAction.next,
-                    'Номер',
-                    null,
-                    null,
-                    TextInputType.text,
-                    null,
-                    String,
-                    inputValue: 'number'),
+              textField(
+                TextInputAction.next,
+                'Номер',
+                null,
+                null,
+                TextInputType.text,
+                null,
+                String,
+                inputValue: 'docNumber'),
               
               const SizedBox(height: 8),
               
               textField(
                   TextInputAction.next, 
-                  'Дата (дд-мм-рррр)', 
+                  'Дата видачі (дд-мм-рррр)', 
                   null, 
                   null,
                   TextInputType.text,
                   null,
                   String,
-                  inputValue: 'date'),
+                  inputValue: 'dateFrom'),
               
               const SizedBox(height: 8),
               
               textField(
+                  TextInputAction.next, 
+                  'Дійсний до (дд-мм-рррр)', 
+                  null, 
+                  null,
+                  TextInputType.text,
+                  null,
+                  String,
+                  inputValue: 'dateTo'),
+              
+              const SizedBox(height: 8),
+
+              textField(
+                  TextInputAction.newline, 
+                  'Опис', 
+                  null, 
+                  null,
+                  TextInputType.multiline, 
+                  null, 
+                  String,
+                  inputValue: 'description'),
+
+              const SizedBox(height: 8),
+              
+              textField(
                   TextInputAction.done, 
-                  'Посилання', 
+                  'Посилання на фото', 
                   null, 
                   null,
                   TextInputType.text, 
                   null, 
                   String,
-                  inputValue: 'imagePath'),
+                  inputValue: 'image'),              
               
+              const SizedBox(height: 8),
             ]
           ),
     ]);
@@ -189,7 +225,7 @@ class _AddDocumentState extends State<AddDocument> {
             textInputAction: textInputAction,
             keyboardType: keyboardType,
             inputFormatters: [if (inputFormatters != null) inputFormatters],
-            maxLines: inputValue == 'type' ? null : 1,
+            maxLines: (inputValue == 'description') ? null : 1,
             autocorrect: true,
             enableSuggestions: true,
             cursorRadius: const Radius.circular(9.0),

@@ -1,16 +1,16 @@
 import 'package:doc_sys_pro/documentsTab/addDocument.dart';
 import 'package:doc_sys_pro/documentsTab/editDocument.dart';
 import 'package:doc_sys_pro/models/document.dart';
-import 'package:doc_sys_pro/models/person.dart';
 import 'package:doc_sys_pro/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 
 class PersonDocs extends StatefulWidget {
-  final int index;
+  final String? index;
+  Map<String, String?> userData;
 
-  PersonDocs({required this.index});
+  PersonDocs({required this.index, required this.userData});
 
   @override
   _PersonDocsState createState() => _PersonDocsState();
@@ -19,7 +19,6 @@ class PersonDocs extends StatefulWidget {
 class _PersonDocsState extends State<PersonDocs> {
   late Box<Document> _personsDocsBox;
   List<Document> _personsDocsList = [];
-  String currentPerson = '';
 
   late Map<int, bool> _checkBoxValues = generateCheckBoxBitMap(mode: "documents");
   bool _isDeleteClicked = false;
@@ -30,15 +29,15 @@ class _PersonDocsState extends State<PersonDocs> {
 
 
   Future getDataFromBox() async {
-    // ALGORITHM: Get a current person's id -> check if there are documents marked with that id
-    Box<Person> _personsBox = await Hive.openBox('personas');
-    _personsDocsBox = await Hive.openBox('documents');
+    _personsDocsBox = await Hive.openBox('your_documents');
     
-    currentPerson = _personsBox.getAt(widget.index)!.person_id;
-
     for (var item in _personsDocsBox.values) {
-      if (currentPerson == item.number) {
-        _personsDocsList.add(item);
+      if (widget.index == item.number) {
+        if (_personsDocsList.contains(item)) {
+          break;
+        } else {
+          _personsDocsList.add(item);
+        }
       }
     }
   }
@@ -151,22 +150,43 @@ class _PersonDocsState extends State<PersonDocs> {
                       itemCount: _personsDocsList.length,
                       itemBuilder: (context, index) {
                           
-                        return ExpansionTile(
-                          backgroundColor: Color.fromARGB(70, 144, 144, 144),
-                          expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                          expandedAlignment: Alignment.centerLeft,
-                          childrenPadding: const EdgeInsets.fromLTRB(73, 0, 0, 20),
-                          title: Text(_personsDocsList[index].name),
-                          subtitle: Text(_personsDocsList[index].type),
-                          controlAffinity: ListTileControlAffinity.leading,
-                          children: [
-                            SelectableText('Номер: ${_personsDocsList[index].number}'),
-                            SelectableText('Дата: ${_personsDocsList[index].date}'),
-                            SelectableText('Посилання: ${_personsDocsList[index].imagePath}'),
-                          ],
-                        );
-                      }
-                    ),
+                        if (_checkBoxVisibility) {
+                          return CheckboxListTile(
+                            title: Text(_personsDocsList[index].name),
+                            subtitle: Text(_personsDocsList[index].type),
+                            value: _checkBoxValues[index],
+                            
+                            shape: const Border(
+                              bottom: BorderSide(color: Color.fromARGB(184, 0, 0, 0)),
+                            ),
+
+                            onChanged: (value) {
+                              setState(() {
+                                _checkBoxValues[index] = value!;
+                              });
+                            },
+                          );
+                          
+                        } else {
+                          
+                          return ExpansionTile(
+                            backgroundColor: const Color.fromARGB(70, 144, 144, 144),
+                            expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                            expandedAlignment: Alignment.centerLeft,
+                            childrenPadding: const EdgeInsets.fromLTRB(73, 0, 0, 20),
+                            title: Text(_personsDocsList[index].name),
+                            subtitle: Text(_personsDocsList[index].type),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            children: [
+                              SelectableText('Id користувача: ${_personsDocsList[index].number}'),
+                              SelectableText('Номер документа: ${_personsDocsList[index].docNumber}'),
+                              SelectableText('Виданий: ${_personsDocsList[index].dateFrom.day}-${_personsDocsList[index].dateFrom.month}-${_personsDocsList[index].dateFrom.year}'),
+                              SelectableText('До: ${_personsDocsList[index].dateTo.day}-${_personsDocsList[index].dateTo.month}-${_personsDocsList[index].dateTo.year}'),
+                              SelectableText('Опис: ${_personsDocsList[index].description}'),
+                            ],
+                          );
+                        }
+                      }),
 
                   floatingActionButton: FloatingActionButton.large(
                     backgroundColor: const Color.fromARGB(255, 58, 58, 58),
@@ -184,7 +204,7 @@ class _PersonDocsState extends State<PersonDocs> {
                             context,
                             MaterialPageRoute(
                                 builder: (context) =>
-                                    DocumentSettings(index: entry.key)));
+                                    DocumentSettings(index: entry.key, userData: widget.userData)));
                             break;
                           }
                         }
@@ -192,7 +212,7 @@ class _PersonDocsState extends State<PersonDocs> {
                         Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => AddDocument(curr_id: currentPerson)));
+                                builder: (context) => AddDocument(curr_id: widget.index ?? '', userData: widget.userData)));
                       }
                     }
                   )

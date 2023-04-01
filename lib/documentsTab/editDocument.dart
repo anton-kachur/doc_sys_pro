@@ -1,6 +1,5 @@
 import 'package:doc_sys_pro/main.dart';
 import 'package:doc_sys_pro/models/document.dart';
-import 'package:doc_sys_pro/models/person.dart';
 import 'package:doc_sys_pro/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,8 +8,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 class DocumentSettings extends StatefulWidget {
   final int index;
+  Map<String, String?> userData;
 
-  DocumentSettings({required this.index});
+  DocumentSettings({required this.index, required this.userData});
 
   @override
   _DocumentSettingsState createState() => _DocumentSettingsState();
@@ -19,25 +19,22 @@ class DocumentSettings extends StatefulWidget {
 class _DocumentSettingsState extends State<DocumentSettings> {
   late Box<Document> _documentsBox;
   Map<String, Object> fieldValues = {
-    'name': '',
     'type': '',
     'number': '',
-    'date': '',
-    'imagePath': '',
+    'docNumber': '',
+    'dateFrom': '',
+    'dateTo': '',
+    'image': '',
+    'description': ''
   };
 
   Future _getDataFromBox() async {
-    _documentsBox = await Hive.openBox('documents');
-  }
-
-  void _addPerson(Document person) {
-    setState(() {
-      _documentsBox.add(person);
-    });
+    _documentsBox = await Hive.openBox('your_documents');
   }
 
   void _editDocument() {
-    List<String> formattedDate = '${fieldValues['date']}'.split('-');
+    List<String> formattedDateFrom = '${fieldValues['dateFrom']}'.split('-');
+    List<String> formattedDateTo = '${fieldValues['dateTo']}'.split('-');
 
     _documentsBox.putAt(
         widget.index,
@@ -48,25 +45,36 @@ class _DocumentSettingsState extends State<DocumentSettings> {
             type: fieldValues['type'] == ''
                 ? _documentsBox.getAt(widget.index)!.type
                 : '${fieldValues['type']}',
-            number: fieldValues['number'] == ''
-                ? _documentsBox.getAt(widget.index)!.number
-                : '${fieldValues['number']}',
-            date: fieldValues['date'] == ''
-                ? _documentsBox.getAt(widget.index)!.date
+            number: _documentsBox.getAt(widget.index)!.number,
+            docNumber: fieldValues['docNumber'] == ''
+                ? _documentsBox.getAt(widget.index)!.docNumber
+                : '${fieldValues['docNumber']}',
+            dateFrom: fieldValues['dateFrom'] == ''
+                ? _documentsBox.getAt(widget.index)!.dateFrom
                 : DateTime(
-                  int.parse(formattedDate.elementAt(2)),
-                  int.parse(formattedDate.elementAt(1)),
-                  int.parse(formattedDate.elementAt(0)),
+                  int.parse(formattedDateFrom.elementAt(2)),
+                  int.parse(formattedDateFrom.elementAt(1)),
+                  int.parse(formattedDateFrom.elementAt(0)),
                 ),
-            imagePath: fieldValues['imagePath'] == ''
-                ? _documentsBox.getAt(widget.index)!.imagePath
-                : '${fieldValues['imagePath']}'
+            dateTo: fieldValues['dateTo'] == ''
+                ? _documentsBox.getAt(widget.index)!.dateTo
+                : DateTime(
+                  int.parse(formattedDateTo.elementAt(2)),
+                  int.parse(formattedDateTo.elementAt(1)),
+                  int.parse(formattedDateTo.elementAt(0)),
+                ),
+            image: fieldValues['image'] == ''
+                ? _documentsBox.getAt(widget.index)!.image
+                : '${fieldValues['image']}',
+            description: fieldValues['description'] == ''
+                ? _documentsBox.getAt(widget.index)!.description
+                : '${fieldValues['description']}'
     ));
   }
 
   void redirect() {
     Navigator.pop(context, false);
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (BuildContext context) => HomeScreen()));
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (BuildContext context) => HomeScreen(widget.userData)));
   }
 
   @override
@@ -135,11 +143,11 @@ class _DocumentSettingsState extends State<DocumentSettings> {
               const SizedBox(height: 8),
               
               textField(
-                  TextInputAction.newline, 
+                  TextInputAction.next, 
                   'Тип документу', 
                   null, 
                   null,
-                  TextInputType.multiline, 
+                  TextInputType.text, 
                   null, 
                   String,
                   inputValue: 'type'),
@@ -147,38 +155,64 @@ class _DocumentSettingsState extends State<DocumentSettings> {
               const SizedBox(height: 8),
               
               textField(
-                  TextInputAction.next,
-                  'Номер',
-                  null,
-                  null,
-                  TextInputType.text,
-                  null,
-                  String,
-                  inputValue: 'number'),
+                TextInputAction.next,
+                'Номер',
+                null,
+                null,
+                TextInputType.text,
+                null,
+                String,
+                inputValue: 'docNumber'),
               
               const SizedBox(height: 8),
               
               textField(
                   TextInputAction.next, 
-                  'Дата (дд-мм-рррр)', 
+                  'Дата видачі (дд-мм-рррр)', 
                   null, 
                   null,
                   TextInputType.text,
                   null,
                   String,
-                  inputValue: 'date'),
+                  inputValue: 'dateFrom'),
               
               const SizedBox(height: 8),
               
               textField(
+                  TextInputAction.next, 
+                  'Дійсний до (дд-мм-рррр)', 
+                  null, 
+                  null,
+                  TextInputType.text,
+                  null,
+                  String,
+                  inputValue: 'dateTo'),
+              
+              const SizedBox(height: 8),
+
+              textField(
+                  TextInputAction.newline, 
+                  'Опис', 
+                  null, 
+                  null,
+                  TextInputType.multiline, 
+                  null, 
+                  String,
+                  inputValue: 'description'),
+
+              const SizedBox(height: 8),
+              
+              textField(
                   TextInputAction.done, 
-                  'Посилання', 
+                  'Посилання на фото', 
                   null, 
                   null,
                   TextInputType.text, 
                   null, 
                   String,
-                  inputValue: 'imagePath'),
+                  inputValue: 'image'),              
+              
+              const SizedBox(height: 8),
             ]
           ),
     ]);
@@ -204,7 +238,7 @@ class _DocumentSettingsState extends State<DocumentSettings> {
             textInputAction: textInputAction,
             keyboardType: keyboardType,
             inputFormatters: [if (inputFormatters != null) inputFormatters],
-            maxLines: inputValue == 'type' ? null : 1,
+            maxLines: (inputValue == 'description') ? null : 1,
             autocorrect: true,
             enableSuggestions: true,
             cursorRadius: const Radius.circular(9.0),

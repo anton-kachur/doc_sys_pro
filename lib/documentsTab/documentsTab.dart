@@ -1,15 +1,16 @@
 import 'package:doc_sys_pro/documentsTab/addDocument.dart';
 import 'package:doc_sys_pro/documentsTab/editDocument.dart';
 import 'package:doc_sys_pro/models/document.dart';
-import 'package:doc_sys_pro/personsTab/addPerson.dart';
-import 'package:doc_sys_pro/personsTab/editPerson.dart';
 import 'package:doc_sys_pro/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:doc_sys_pro/models/person.dart';
 
 
 class DocumentsTab extends StatefulWidget {
+  Map<String, String?> userData;
+
+  DocumentsTab(this.userData);
+
   @override
   _DocumentsTabState createState() => _DocumentsTabState();
 }
@@ -27,10 +28,18 @@ class _DocumentsTabState extends State<DocumentsTab> {
 
 
   Future getDataFromBox() async {
-    _documentsBox = await Hive.openBox('documents');
-    _documentsList = _documentsBox.values.toList();
-  }
+    _documentsBox = await Hive.openBox('your_documents');
 
+    for (var item in _documentsBox.values) {
+      if (widget.userData['id'] == item.number) {
+        if (_documentsList.contains(item)) {
+          break;
+        } else {
+          _documentsList.add(item);
+        }
+      }
+    }
+  }
 
   void _deleteDocument(int index) {
     setState(() {
@@ -38,7 +47,6 @@ class _DocumentsTabState extends State<DocumentsTab> {
       _documentsList.removeAt(index);
     });
   }
-
 
   IconData _createIcon() {
     // Creates icons for FloatingAction depending on mode (delete/edit/add)
@@ -71,6 +79,7 @@ class _DocumentsTabState extends State<DocumentsTab> {
                     toolbarHeight: 60,
                     title: const Text('Документи'),
                     backgroundColor: const Color.fromARGB(255, 40, 40, 40),
+                    automaticallyImplyLeading: false,
                     actions: [
 
                       // Edit button, changes color if clicked
@@ -132,7 +141,12 @@ class _DocumentsTabState extends State<DocumentsTab> {
                     ],
                   ),
 
-                  body: ListView.builder(
+                  body: _documentsList.length == 0 ? 
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                      child: Text('У вас немає жодного документа'),
+                    ) :
+                    ListView.builder(
                       itemCount: _documentsList.length,
                       itemBuilder: (context, index) {
 
@@ -156,7 +170,7 @@ class _DocumentsTabState extends State<DocumentsTab> {
                         } else {
                           
                           return ExpansionTile(
-                            backgroundColor: Color.fromARGB(70, 144, 144, 144),
+                            backgroundColor: const Color.fromARGB(70, 144, 144, 144),
                             expandedCrossAxisAlignment: CrossAxisAlignment.start,
                             expandedAlignment: Alignment.centerLeft,
                             childrenPadding: const EdgeInsets.fromLTRB(73, 0, 0, 20),
@@ -164,14 +178,14 @@ class _DocumentsTabState extends State<DocumentsTab> {
                             subtitle: Text(_documentsList[index].type),
                             controlAffinity: ListTileControlAffinity.leading,
                             children: [
-                              SelectableText('Номер: ${_documentsList[index].number}'),
-                              SelectableText('Дата: ${_documentsList[index].date}'),
-                              SelectableText('Посилання: ${_documentsList[index].imagePath}'),
+                              SelectableText('Id користувача: ${_documentsList[index].number}'),
+                              SelectableText('Номер документа: ${_documentsList[index].docNumber}'),
+                              SelectableText('Виданий: ${_documentsList[index].dateFrom.day}-${_documentsList[index].dateFrom.month}-${_documentsList[index].dateFrom.year}'),
+                              SelectableText('До: ${_documentsList[index].dateTo.day}-${_documentsList[index].dateTo.month}-${_documentsList[index].dateTo.year}'),
+                              SelectableText('Опис: ${_documentsList[index].description}'),
                             ],
                           );
-
                         }
-
                       }),
 
                   floatingActionButton: FloatingActionButton.large(
@@ -190,7 +204,7 @@ class _DocumentsTabState extends State<DocumentsTab> {
                             context,
                             MaterialPageRoute(
                                 builder: (context) =>
-                                    DocumentSettings(index: entry.key)));
+                                    DocumentSettings(index: entry.key, userData: widget.userData)));
                             break;
                           }
                         }
@@ -198,7 +212,7 @@ class _DocumentsTabState extends State<DocumentsTab> {
                         Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => AddDocument()));
+                                builder: (context) => AddDocument(userData: widget.userData)));
                       }
                     }
                   )
