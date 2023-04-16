@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 
+/* Class which creates a Tab with user's documetns */
 class PersonDocs extends StatefulWidget {
   final String? index;
   Map<String, String?> userData;
@@ -17,10 +18,11 @@ class PersonDocs extends StatefulWidget {
 }
 
 class _PersonDocsState extends State<PersonDocs> {
-  late Box<Document> _personsDocsBox;
-  List<Document> _personsDocsList = [];
+  late Box<Document> _personsDocsBox; // retreive documents of the user from the database
+  List<Document> _personsDocsList = []; // group the user's docs to list
 
   late Map<int, bool> _checkBoxValues = generateCheckBoxBitMap(mode: "documents");
+  
   bool _isDeleteClicked = false;
   bool _isEditClicked = false;
   bool _isViewClicked = false;

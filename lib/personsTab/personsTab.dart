@@ -1,6 +1,8 @@
 import 'package:doc_sys_pro/personsTab/personDocs.dart';
 import 'package:flutter/material.dart';
 
+
+/* Classes for user's interface */
 class PersonsTab extends StatefulWidget {
   Map<String, String?> userData;
   
@@ -12,7 +14,7 @@ class PersonsTab extends StatefulWidget {
 
 
 class _PersonsTabState extends State<PersonsTab> {
-  late Map<String, String?> user;
+  late Map<String, String?> user; // Has user account data
 
   @override
   void initState() {

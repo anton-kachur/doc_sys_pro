@@ -2,7 +2,6 @@ import 'package:doc_sys_pro/main.dart';
 import 'package:doc_sys_pro/models/document.dart';
 import 'package:doc_sys_pro/utils.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 
@@ -19,8 +18,8 @@ class DocumentSettings extends StatefulWidget {
 class _DocumentSettingsState extends State<DocumentSettings> {
   late Box<Document> _documentsBox;
   Map<String, Object> fieldValues = {
+    'name': '',
     'type': '',
-    'number': '',
     'docNumber': '',
     'dateFrom': '',
     'dateTo': '',
@@ -124,128 +123,47 @@ class _DocumentSettingsState extends State<DocumentSettings> {
   }
 
   Widget textFieldsBlock() {
+    List<String> inputFieldText = [
+      'Назва', 'Тип документу', 'Номер','Дата видачі (дд-мм-рррр)', 
+      'Дійсний до (дд-мм-рррр)', 'Опис', 'Посилання на фото'];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center, 
       children: [
         Column(
             children: [
-              
-              textField(
-                  TextInputAction.next,
-                  'Назва',
-                  TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                  TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                  TextInputType.text,
-                  null,
-                  String,
-                  inputValue: 'name'),
-              
-              const SizedBox(height: 8),
-              
-              textField(
-                  TextInputAction.next, 
-                  'Тип документу', 
-                  null, 
-                  null,
-                  TextInputType.text, 
-                  null, 
-                  String,
-                  inputValue: 'type'),
-              
-              const SizedBox(height: 8),
-              
-              textField(
-                TextInputAction.next,
-                'Номер',
-                null,
-                null,
-                TextInputType.text,
-                null,
-                String,
-                inputValue: 'docNumber'),
-              
-              const SizedBox(height: 8),
-              
-              textField(
-                  TextInputAction.next, 
-                  'Дата видачі (дд-мм-рррр)', 
-                  null, 
-                  null,
-                  TextInputType.text,
-                  null,
-                  String,
-                  inputValue: 'dateFrom'),
-              
-              const SizedBox(height: 8),
-              
-              textField(
-                  TextInputAction.next, 
-                  'Дійсний до (дд-мм-рррр)', 
-                  null, 
-                  null,
-                  TextInputType.text,
-                  null,
-                  String,
-                  inputValue: 'dateTo'),
-              
-              const SizedBox(height: 8),
-
-              textField(
-                  TextInputAction.newline, 
-                  'Опис', 
-                  null, 
-                  null,
-                  TextInputType.multiline, 
-                  null, 
-                  String,
-                  inputValue: 'description'),
-
-              const SizedBox(height: 8),
-              
-              textField(
-                  TextInputAction.done, 
-                  'Посилання на фото', 
-                  null, 
-                  null,
-                  TextInputType.text, 
-                  null, 
-                  String,
-                  inputValue: 'image'),              
-              
-              const SizedBox(height: 8),
+              for (int i = 0; i < inputFieldText.length; i++)
+                textField(
+                  {
+                    'textInputAction' : inputFieldText[i] == 'Посилання на фото' ? TextInputAction.done : TextInputAction.next,
+                    'labelText' : inputFieldText[i],
+                    'keyboardType' : inputFieldText[i] == 'Опис' ? TextInputType.multiline  : TextInputType.text,
+                    'inputValue' : fieldValues.entries.elementAt(i).key
+                  }
+                ),
             ]
           ),
     ]);
   }
 
 
-  Widget textField(
-      TextInputAction? textInputAction,
-      String labelText,
-      TextStyle? hintStyle,
-      TextStyle? labelStyle,
-      TextInputType? keyboardType,
-      TextInputFormatter? inputFormatters,
-      Type? parseType,
-      {required String inputValue}
-    ) {
+  Widget textField(Map args) {
     
     return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 15),
+        margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
         width: 320,
         child: TextFormField(
             autofocus: false,
-            textInputAction: textInputAction,
-            keyboardType: keyboardType,
-            inputFormatters: [if (inputFormatters != null) inputFormatters],
-            maxLines: (inputValue == 'description') ? null : 1,
+            textInputAction: args['textInputAction'],
+            keyboardType: args['keyboardType'],
+            maxLines: (args['inputValue'] == 'description') ? null : 1,
             autocorrect: true,
             enableSuggestions: true,
             cursorRadius: const Radius.circular(9.0),
             cursorColor: Colors.black,
             
             decoration: InputDecoration(
-              labelText: labelText,
+              labelText: args['labelText'],
               hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
               labelStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
               contentPadding: const EdgeInsets.fromLTRB(9, 0, 0, 0),
@@ -254,7 +172,7 @@ class _DocumentSettingsState extends State<DocumentSettings> {
             ),
             
             onChanged: (String value) {
-              fieldValues[inputValue] = value;
+              fieldValues[args['inputValue']] = value;
             }
         )
     );

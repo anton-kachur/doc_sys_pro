@@ -3,6 +3,7 @@ import 'package:doc_sys_pro/main.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+/* Class responsible for creating a page of user accont*/
 class LoginPage extends StatelessWidget {
   final controller = Get.put(LoginController());
 

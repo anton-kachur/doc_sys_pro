@@ -20,12 +20,13 @@ class _DocumentsTabState extends State<DocumentsTab> {
   late Box<Document> _documentsBox;
   List<Document> _documentsList = [];
   late Map<int, bool> _checkBoxValues = generateCheckBoxBitMap(mode: "documents");
-  bool _isDeleteClicked = false;
-  bool _isEditClicked = false;
-  bool _isViewClicked = false;
-
-  bool _checkBoxVisibility = false;
-
+  
+  Map<String, bool> _isClicked = {
+    'delete' : false,
+    'edit' : false,
+    'view' : false,
+    'checkbox_visibility' : false
+  };
 
   Future getDataFromBox() async {
     _documentsBox = await Hive.openBox('your_documents');
@@ -50,11 +51,11 @@ class _DocumentsTabState extends State<DocumentsTab> {
 
   IconData _createIcon() {
     // Creates icons for FloatingAction depending on mode (delete/edit/add)
-    if (_isDeleteClicked) {
+    if (_isClicked['delete'] == true) {
       return Icons.delete_forever; 
-    } else if (_isEditClicked) { 
+    } else if (_isClicked['edit'] == true) { 
       return Icons.edit;
-    } else if (_isViewClicked) { 
+    } else if (_isClicked['view'] == true) { 
       return Icons.search_rounded;
     } else {
       return Icons.add_rounded;
@@ -89,15 +90,15 @@ class _DocumentsTabState extends State<DocumentsTab> {
                         icon: Icon(
                           Icons.edit_note_rounded, 
                           size: 30,
-                          color: _isEditClicked ? const Color.fromARGB(255, 246, 246, 246) : const Color.fromARGB(57, 246, 246, 246)
+                          color: _isClicked['edit'] == true ? const Color.fromARGB(255, 246, 246, 246) : const Color.fromARGB(57, 246, 246, 246)
                         ),
 
                         onPressed: () {
                           setState(() {
-                            _isEditClicked = !_isEditClicked;
-                            _isDeleteClicked = false;
-                            _isViewClicked = false;
-                            _checkBoxVisibility = !_checkBoxVisibility;
+                            _isClicked['edit'] = !(_isClicked['edit']!);
+                            _isClicked['delete'] = false;
+                            _isClicked['view'] = false;
+                            _isClicked['checkbox_visibility'] = !(_isClicked['checkbox_visibility']!);
                           });
                         }
                       ),
@@ -108,15 +109,15 @@ class _DocumentsTabState extends State<DocumentsTab> {
                         alignment: Alignment.centerLeft,
                         icon: Icon(
                           Icons.playlist_remove_rounded, 
-                          color: _isDeleteClicked ? const Color.fromARGB(255, 246, 246, 246) : const Color.fromARGB(57, 246, 246, 246)
+                          color: _isClicked['delete'] == true ? const Color.fromARGB(255, 246, 246, 246) : const Color.fromARGB(57, 246, 246, 246)
                         ),
 
                         onPressed: () {
                           setState(() {
-                            _isDeleteClicked = !_isDeleteClicked;
-                            _isEditClicked = false;
-                            _isViewClicked = false;
-                            _checkBoxVisibility = !_checkBoxVisibility;
+                            _isClicked['delete'] = !(_isClicked['delete']!);
+                            _isClicked['edit'] = false;
+                            _isClicked['view'] = false;
+                            _isClicked['checkbox_visibility'] = !(_isClicked['checkbox_visibility']!);
                           });
                         }),
 
@@ -126,15 +127,15 @@ class _DocumentsTabState extends State<DocumentsTab> {
                         alignment: Alignment.centerLeft,
                         icon: Icon(
                           Icons.manage_search_rounded, 
-                          color: _isViewClicked ? const Color.fromARGB(255, 246, 246, 246) : const Color.fromARGB(57, 246, 246, 246)
+                          color: _isClicked['view'] == true ? const Color.fromARGB(255, 246, 246, 246) : const Color.fromARGB(57, 246, 246, 246)
                         ),
 
                         onPressed: () {
                           setState(() {
-                            _isViewClicked = !_isViewClicked;
-                            _isDeleteClicked = false;
-                            _isEditClicked = false;
-                            _checkBoxVisibility = !_checkBoxVisibility;
+                            _isClicked['view'] = !(_isClicked['view']!);
+                            _isClicked['delete'] = false;
+                            _isClicked['edit'] = false;
+                            _isClicked['checkbox_visibility'] = !(_isClicked['checkbox_visibility']!);
                           });
                         }),
 
@@ -150,7 +151,7 @@ class _DocumentsTabState extends State<DocumentsTab> {
                       itemCount: _documentsList.length,
                       itemBuilder: (context, index) {
 
-                        if (_checkBoxVisibility) {
+                        if (_isClicked['checkbox_visibility'] == true) {
                           return CheckboxListTile(
                             title: Text(_documentsList[index].name),
                             subtitle: Text(_documentsList[index].type),
@@ -193,11 +194,11 @@ class _DocumentsTabState extends State<DocumentsTab> {
                     child: Icon(_createIcon()),
                     onPressed: () {
 
-                      if (_isDeleteClicked) {
+                      if (_isClicked['delete'] == true) {
                         for (MapEntry<int, bool> entry in _checkBoxValues.entries) {
                           if (entry.value == true) _deleteDocument(entry.key);
                         }
-                      } else if (_isEditClicked) {
+                      } else if (_isClicked['edit'] == true) {
                         for (MapEntry<int, bool> entry in _checkBoxValues.entries) {
                           if (entry.value == true) {
                             Navigator.push(
