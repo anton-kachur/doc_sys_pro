@@ -1,8 +1,15 @@
+import 'dart:io';
+
 import 'package:doc_sys_pro/documentsTab/addDocument.dart';
 import 'package:doc_sys_pro/documentsTab/editDocument.dart';
+import 'package:doc_sys_pro/documentsTab/movePage.dart';
+import 'package:doc_sys_pro/main.dart';
 import 'package:doc_sys_pro/models/document.dart';
+import 'package:doc_sys_pro/models/folder.dart';
+import 'package:doc_sys_pro/personsTab/folderDocs.dart';
 import 'package:doc_sys_pro/utils.dart';
 import 'package:flutter/material.dart';
+import 'package:folding_menu/folding_menu.dart';
 import 'package:hive/hive.dart';
 
 
@@ -19,21 +26,31 @@ class DocumentsTab extends StatefulWidget {
 class _DocumentsTabState extends State<DocumentsTab> {
   late Box<Document> _documentsBox;
   List<Document> _documentsList = [];
-  late Map<int, bool> _checkBoxValues = generateCheckBoxBitMap(mode: "documents");
-  
-  Map<String, bool> _isClicked = {
-    'delete' : false,
-    'edit' : false,
-    'view' : false,
-    'checkbox_visibility' : false
-  };
 
-  Future getDataFromBox() async {
+  late Box<Folder> _foldersBox;
+  List<Folder> _foldersList = [];
+
+  final TextEditingController _textFieldController = TextEditingController();
+  bool openMenu = false;
+
+  // Retreive all avalialbe user's documents and folders
+  Future _getDataFromBoxes() async {
     _documentsBox = await Hive.openBox('your_documents');
+    _foldersBox = await Hive.openBox('your_folders');
 
+    for (var item in _foldersBox.values) {
+      if (widget.userData['id'] == item.number) {
+        if (_foldersList.contains(item)) {
+          break;
+        } else {
+          _foldersList.add(item);
+        }
+      }
+    }
+    
     for (var item in _documentsBox.values) {
       if (widget.userData['id'] == item.number) {
-        if (_documentsList.contains(item)) {
+        if (_documentsList.contains(item)) {  
           break;
         } else {
           _documentsList.add(item);
@@ -42,6 +59,22 @@ class _DocumentsTabState extends State<DocumentsTab> {
     }
   }
 
+  // Create new folder's name
+  void _addFolder() {
+
+    Map isAllCorrect = folderIsInDB(foldersList: _foldersList, name: 'Нова тека');
+    
+    _foldersBox.add(
+      Folder(
+        name: isAllCorrect['all_correct'] == true ? 'Нова тека' : 'Нова тека',
+        number: widget.userData['id'] as String,
+        docsInFolder: [{}]  
+    ));
+
+    redirect(context: context, userData: widget.userData);
+  }
+
+  // Delete document from DB
   void _deleteDocument(int index) {
     setState(() {
       _documentsBox.deleteAt(index);
@@ -49,174 +82,365 @@ class _DocumentsTabState extends State<DocumentsTab> {
     });
   }
 
-  IconData _createIcon() {
-    // Creates icons for FloatingAction depending on mode (delete/edit/add)
-    if (_isClicked['delete'] == true) {
-      return Icons.delete_forever; 
-    } else if (_isClicked['edit'] == true) { 
-      return Icons.edit;
-    } else if (_isClicked['view'] == true) { 
-      return Icons.search_rounded;
-    } else {
-      return Icons.add_rounded;
-    }
+  // Delete folder from DB
+  void _deleteFolder(int index) {
+    setState(() {
+      _foldersBox.deleteAt(index);
+      _foldersList.removeAt(index);
+    });
   }
-  
+
+  // Save new folder's name
+  void _saveChanges(int folderIndex) {
+    _foldersBox.putAt(
+        folderIndex,
+        Folder(
+            name: _textFieldController.text == ''
+                ? _foldersBox.getAt(folderIndex)!.name
+                : _textFieldController.text,
+            number: _foldersBox.getAt(folderIndex)!.number,
+            docsInFolder: _foldersBox.getAt(folderIndex)!.docsInFolder  
+      ));
+  }
+
+  // Change name of some folder via alert dialog with textfield
+  Future<void> changeFolderName(BuildContext context, int folderIndex) async {
+    return showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          actionsAlignment: MainAxisAlignment.spaceEvenly,
+          content: TextField(
+            onChanged: (value) {
+              setState(() {
+                _foldersList[folderIndex].name = value;
+              });
+            },
+            controller: _textFieldController,
+            decoration: InputDecoration(
+              labelText: 'Введіть нову назву папки',
+              hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+              labelStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+              contentPadding: const EdgeInsets.fromLTRB(9, 0, 0, 0),
+              focusedBorder: textFieldStyle,
+              enabledBorder: textFieldStyle,
+            ),
+          ),
+
+          actions: [
+
+            // Cancel button
+            MaterialButton(
+              color: const Color.fromARGB(255, 25, 25, 25),
+              textColor: Colors.white,
+              child: const Text('Відмінити'),
+              onPressed: () {
+                setState(() {
+                  Navigator.pop(context);
+                });
+              },
+            ),
+
+            // Accept button
+            MaterialButton(
+              color: const Color.fromARGB(255, 25, 25, 25),
+              textColor: Colors.white,
+              child: const Text('Прийняти'),
+              onPressed: () {
+                setState(() {
+                  _saveChanges(folderIndex);
+                  Navigator.pop(context);
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (BuildContext context) => HomeScreen(widget.userData, currentIndex: 1)));
+                });
+              },
+            ),
+
+          ],
+        );
+      });
+  }
+
+  // Display scrollable list of user's folders and documents
+  Widget createItemsList(String mode) {
+    return Flexible(
+      child: Container(
+        
+        child: ListView.builder(
+          itemCount: mode == 'folders' ? _foldersList.length : _documentsList.length,
+          itemBuilder: (context, index) {
+              
+            return ListTileTheme(
+              child: ExpansionTile(
+                trailing: Icon(mode == 'folders' ? Icons.folder_rounded : Icons.description_rounded),
+                backgroundColor: const Color.fromARGB(70, 144, 144, 144),
+                expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                expandedAlignment: Alignment.centerLeft,
+                childrenPadding: const EdgeInsets.fromLTRB(73, 0, 0, 10),
+                title: Text(mode == 'folders' ? _foldersList[index].name : _documentsList[index].name),
+                subtitle: Text(mode == 'folders' ? '' : _documentsList[index].type),
+                controlAffinity: ListTileControlAffinity.leading,
+                children: [
+                  if (mode == 'documents') SelectableText('Номер документа: ${_documentsList[index].docNumber}'),
+                  if (mode == 'documents') SelectableText('Виданий: ${_documentsList[index].dateFrom.day}-${_documentsList[index].dateFrom.month}-${_documentsList[index].dateFrom.year}'),
+                  if (mode == 'documents') SelectableText('До: ${_documentsList[index].dateTo.day}-${_documentsList[index].dateTo.month}-${_documentsList[index].dateTo.year}'),
+                  if (mode == 'documents') SelectableText('Опис: ${_documentsList[index].description}'),
+                  if (mode == 'documents') 
+                    if (_documentsList[index].image != '')
+                      SizedBox(
+                        height: 200,
+                        width: 308,
+                        child: Image.file(
+                          File(_documentsList[index].image),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+
+                  Row(
+                    children: [
+                      
+                      // Delete button
+                      ActionChip(
+                        backgroundColor: const Color.fromARGB(255, 62, 62, 62),
+                        label: const Text(
+                          'Видалити', 
+                          style: TextStyle(
+                            color: Colors.white, 
+                            fontWeight: FontWeight.normal
+                          )
+                        ),
+
+                        onPressed: () {
+                          mode == 'folders' ? _deleteFolder(index) : _deleteDocument(index);  
+                        },
+                      ),  
+
+                      const SizedBox(width: 10),
+
+                      // Edit button
+                      ActionChip(
+                        backgroundColor: const Color.fromARGB(255, 62, 62, 62),
+                        label: const Text(
+                          'Редагувати', 
+                          style: TextStyle(
+                            color: Colors.white, 
+                            fontWeight: FontWeight.normal
+                          )
+                        ),
+                        
+                        onPressed: () {
+                          if (mode == 'folders') {
+                            changeFolderName(context, index);
+                          } else {
+                            Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                DocumentSettings(index: index, userData: widget.userData)));
+                          }
+                        },
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      // View button (for folders)
+                      if (mode == 'folders')
+                        ActionChip(
+                          backgroundColor: const Color.fromARGB(255, 62, 62, 62),
+                          label: const Text(
+                            'Відкрити', 
+                            style: TextStyle(
+                              color: Colors.white, 
+                              fontWeight: FontWeight.normal
+                            )
+                          ),
+                          
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => 
+                                FolderDocs(folderIndex: '$index', userData: widget.userData)
+                              )
+                            );
+                          },
+                        ),
+
+                      // Move document button
+                      if (mode == 'documents')
+                        ActionChip(
+                          backgroundColor: const Color.fromARGB(255, 62, 62, 62),
+                          label: const Text(
+                            'Перемістити', 
+                            style: TextStyle(
+                              color: Colors.white, 
+                              fontWeight: FontWeight.normal
+                            )
+                          ),
+                          
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => 
+                                MovePage(documentIndex: index, userData: widget.userData)
+                              )
+                            );
+                          },
+                        ),
+                    ],
+                  )
+
+                ],
+              )
+            );
+          }
+        ),
+      )
+    );
+  }  
+
+  // Search bar for documents
+  Widget searchBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+      width: 300,
+      child: TextFormField(
+        autofocus: false,
+        textInputAction: TextInputAction.search,
+        keyboardType: TextInputType.text,
+        maxLines: 1,
+        autocorrect: true,
+        enableSuggestions: true,
+        cursorRadius: const Radius.circular(9.0),
+        cursorColor: Colors.black,
+        
+        decoration: InputDecoration(
+          labelText: "Шукати документ...",
+          hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+          labelStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+          contentPadding: const EdgeInsets.fromLTRB(9, 0, 0, 0),
+          focusedBorder: textFieldStyle,
+          enabledBorder: textFieldStyle,
+        ),
+        
+        onFieldSubmitted: (String value) {
+          setState(() {
+            _documentsList = searchForDocs(value, _documentsList);
+          });  
+        },
+      )
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    var boxData = getDataFromBox();  // data retreived from database
+    var boxData = _getDataFromBoxes();  // data retreived from database
 
     return FutureBuilder(
         future: boxData, 
         builder: (BuildContext context, AsyncSnapshot snapshot) {
-          
             if (snapshot.hasError) {
               return waitingOrErrorWindow('Помилка: ${snapshot.error}', context);
             } else {
               return Scaffold(
-                
                   appBar: AppBar(
                     toolbarHeight: 60,
-                    title: const Text('Документи'),
+                    title: const Text('Мої документи'),
                     backgroundColor: const Color.fromARGB(255, 40, 40, 40),
-                    automaticallyImplyLeading: false,
+                    
                     actions: [
 
-                      // Edit button, changes color if clicked
                       IconButton(
-                        splashColor: Colors.transparent,
-                        alignment: Alignment.centerLeft,
-                        icon: Icon(
-                          Icons.edit_note_rounded, 
-                          size: 30,
-                          color: _isClicked['edit'] == true ? const Color.fromARGB(255, 246, 246, 246) : const Color.fromARGB(57, 246, 246, 246)
-                        ),
-
+                        icon: const Icon(Icons.add_box_rounded),
                         onPressed: () {
                           setState(() {
-                            _isClicked['edit'] = !(_isClicked['edit']!);
-                            _isClicked['delete'] = false;
-                            _isClicked['view'] = false;
-                            _isClicked['checkbox_visibility'] = !(_isClicked['checkbox_visibility']!);
+                            openMenu = !openMenu;
                           });
                         }
                       ),
 
-                      // Delete button, changes color if clicked
-                      IconButton(
-                        splashColor: Colors.transparent,
-                        alignment: Alignment.centerLeft,
-                        icon: Icon(
-                          Icons.playlist_remove_rounded, 
-                          color: _isClicked['delete'] == true ? const Color.fromARGB(255, 246, 246, 246) : const Color.fromARGB(57, 246, 246, 246)
-                        ),
+                      const SizedBox(width: 15),
 
-                        onPressed: () {
-                          setState(() {
-                            _isClicked['delete'] = !(_isClicked['delete']!);
-                            _isClicked['edit'] = false;
-                            _isClicked['view'] = false;
-                            _isClicked['checkbox_visibility'] = !(_isClicked['checkbox_visibility']!);
-                          });
-                        }),
+                      CircleAvatar(
+                        backgroundImage: Image.network(widget.userData['avatar'] ?? '').image,
+                        radius: 18,
+                      ),
 
-                      // View person's profile button, changes color if clicked
-                      IconButton(
-                        splashColor: Colors.transparent,
-                        alignment: Alignment.centerLeft,
-                        icon: Icon(
-                          Icons.manage_search_rounded, 
-                          color: _isClicked['view'] == true ? const Color.fromARGB(255, 246, 246, 246) : const Color.fromARGB(57, 246, 246, 246)
-                        ),
-
-                        onPressed: () {
-                          setState(() {
-                            _isClicked['view'] = !(_isClicked['view']!);
-                            _isClicked['delete'] = false;
-                            _isClicked['edit'] = false;
-                            _isClicked['checkbox_visibility'] = !(_isClicked['checkbox_visibility']!);
-                          });
-                        }),
-
+                      const SizedBox(width: 15),
                     ],
                   ),
 
-                  body: _documentsList.length == 0 ? 
+                  drawer: Drawer(
+                    child: Column(
+                      children: [
+                        searchBar(),
+                        _documentsList.isNotEmpty ? createItemsList('documents') : const Text(''),
+                      ],
+                    )
+                  ),
+                  
+                  body: _documentsList.isEmpty && _foldersList.isEmpty ? 
+                    
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
                       child: Text('У вас немає жодного документа'),
                     ) :
-                    ListView.builder(
-                      itemCount: _documentsList.length,
-                      itemBuilder: (context, index) {
+                    
+                    Column(
+                      children: [
 
-                        if (_isClicked['checkbox_visibility'] == true) {
-                          return CheckboxListTile(
-                            title: Text(_documentsList[index].name),
-                            subtitle: Text(_documentsList[index].type),
-                            value: _checkBoxValues[index],
-                            
-                            shape: const Border(
-                              bottom: BorderSide(color: Color.fromARGB(184, 0, 0, 0)),
+                        // Show list of folders
+                        _foldersList.isNotEmpty ? createItemsList('folders') : const Text(''),
+                        //_documentsList.isNotEmpty ? createItemsList('documents') : const Text(''),
+                        
+                        // Dropdown menu with options "Add document" & "Add folder"
+                        FoldingMenu(
+                          duration: Duration(milliseconds: 900), 
+                          shadowColor: Colors.transparent, 
+                          animationCurve: Curves.decelerate, 
+                          folded: openMenu, 
+                          
+                          children: [
+                            // Add document button
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(180, 15, 15, 10),
+                              child: FloatingActionButton.extended(
+                                label: const Text('Створити документ'),
+                                splashColor: Colors.transparent,
+                                backgroundColor: const Color.fromARGB(255, 58, 58, 58),
+                                icon: const Icon(Icons.add),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => AddDocument(userData: widget.userData)));
+                                }
+                              ),
                             ),
 
-                            onChanged: (value) {
-                              setState(() {
-                                _checkBoxValues[index] = value!;
-                              });
-                            },
-                          );
-                          
-                        } else {
-                          
-                          return ExpansionTile(
-                            backgroundColor: const Color.fromARGB(70, 144, 144, 144),
-                            expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                            expandedAlignment: Alignment.centerLeft,
-                            childrenPadding: const EdgeInsets.fromLTRB(73, 0, 0, 20),
-                            title: Text(_documentsList[index].name),
-                            subtitle: Text(_documentsList[index].type),
-                            controlAffinity: ListTileControlAffinity.leading,
-                            children: [
-                              SelectableText('Id користувача: ${_documentsList[index].number}'),
-                              SelectableText('Номер документа: ${_documentsList[index].docNumber}'),
-                              SelectableText('Виданий: ${_documentsList[index].dateFrom.day}-${_documentsList[index].dateFrom.month}-${_documentsList[index].dateFrom.year}'),
-                              SelectableText('До: ${_documentsList[index].dateTo.day}-${_documentsList[index].dateTo.month}-${_documentsList[index].dateTo.year}'),
-                              SelectableText('Опис: ${_documentsList[index].description}'),
-                            ],
-                          );
-                        }
-                      }),
 
-                  floatingActionButton: FloatingActionButton.large(
-                    backgroundColor: const Color.fromARGB(255, 58, 58, 58),
-                    child: Icon(_createIcon()),
-                    onPressed: () {
+                            // Add folder button TODO
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(220, 15, 15, 10),
+                              child: FloatingActionButton.extended(
+                                
+                                label: const Text('Створити теку'),
+                                splashColor: Colors.transparent,
+                                backgroundColor: const Color.fromARGB(255, 58, 58, 58),
+                                icon: const Icon(Icons.create_new_folder_rounded),
 
-                      if (_isClicked['delete'] == true) {
-                        for (MapEntry<int, bool> entry in _checkBoxValues.entries) {
-                          if (entry.value == true) _deleteDocument(entry.key);
-                        }
-                      } else if (_isClicked['edit'] == true) {
-                        for (MapEntry<int, bool> entry in _checkBoxValues.entries) {
-                          if (entry.value == true) {
-                            Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    DocumentSettings(index: entry.key, userData: widget.userData)));
-                            break;
-                          }
-                        }
-                      } else {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => AddDocument(userData: widget.userData)));
-                      }
-                    }
-                  )
+                                onPressed: () {
+                                  _addFolder();
+                                }
+                              )
+                            ),
+                          ]
+                        ),
+
+                      ],
+                    ),
+
               );
             }
         });

@@ -1,4 +1,3 @@
-import 'package:doc_sys_pro/personsTab/personDocs.dart';
 import 'package:flutter/material.dart';
 
 
@@ -28,9 +27,17 @@ class _PersonsTabState extends State<PersonsTab> {
     return Scaffold(
         appBar: AppBar(
           toolbarHeight: 60,
-          title: const Text('Особисті дані'),
+          title: const Text('Мій акаунт'),
           backgroundColor: const Color.fromARGB(255, 40, 40, 40),
-          automaticallyImplyLeading: false
+          automaticallyImplyLeading: false,
+          actions: [
+            CircleAvatar(
+              backgroundImage: Image.network(widget.userData['avatar'] ?? '').image,
+              radius: 18,
+            ),
+
+            const SizedBox(width: 15),
+          ],
         ),
 
         body: ExpansionTile(
@@ -46,19 +53,6 @@ class _PersonsTabState extends State<PersonsTab> {
           ],
         ),
         
-        floatingActionButton: FloatingActionButton.large(
-          backgroundColor: const Color.fromARGB(255, 58, 58, 58),
-          child: const Icon(Icons.search_rounded),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => 
-                  PersonDocs(index: user['id'], userData: user)
-              )
-            );
-          }
-        )
       );
   }
 }

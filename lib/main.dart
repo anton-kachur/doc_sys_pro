@@ -1,5 +1,6 @@
 import 'package:doc_sys_pro/loginPage.dart';
 import 'package:doc_sys_pro/models/document.dart';
+import 'package:doc_sys_pro/models/folder.dart';
 import 'package:doc_sys_pro/personsTab/personsTab.dart';
 import 'package:doc_sys_pro/documentsTab/documentsTab.dart';
 import 'package:doc_sys_pro/utils.dart';
@@ -19,10 +20,24 @@ void main() async {
 
   // Реєстрація адаптерів для моделей
   Hive.registerAdapter(DocumentAdapter());
+  Hive.registerAdapter(FolderAdapter());
 
   var docsBox = await Hive.openBox('your_documents');
   docsBoxLength = docsBox.length;
+  for (var i in docsBox.values) {
+    print(i.toString());
+  }
   docsBox.close();
+
+  var foldersBox = await Hive.openBox('your_folders');
+
+  for (var i in foldersBox.toMap().entries) {
+    print('${i.key}\n${i.value.toString()}');
+  }
+  
+  foldersBoxLength = foldersBox.length;
+
+  foldersBox.close();
 
   runApp(MyApp());
 }
@@ -46,8 +61,9 @@ class MyApp extends StatelessWidget {
 
 class HomeScreen extends StatefulWidget {
   Map<String, String?> userData;
+  int currentIndex;
 
-  HomeScreen(this.userData, {Key? key}) : super(key: key);
+  HomeScreen(this.userData, {this.currentIndex = 0, Key? key}) : super(key: key);
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -65,8 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _tabs.add(DocumentsTab(user));
   }
 
-  int _currentIndex = 0;
-
   @override
   Widget build(BuildContext context) {
     
@@ -76,26 +90,26 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: const Color.fromARGB(255, 25, 25, 25),
       ),
 
-      body: _tabs[_currentIndex],
+      body: _tabs[widget.currentIndex],
       
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: const Color.fromARGB(255, 246, 246, 246),
         unselectedItemColor: const Color.fromARGB(57, 246, 246, 246),
         backgroundColor: const Color.fromARGB(255, 40, 40, 40),
-        currentIndex: _currentIndex,
+        currentIndex: widget.currentIndex,
         onTap: (index) {
           setState(() {
-            _currentIndex = index;
+            widget.currentIndex = index;
           });
         },
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
-            label: 'Особи',
+            label: 'Акаунт',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.description),
-            label: 'Документи',
+            label: 'Мої документи',
           ),
         ],
       ),

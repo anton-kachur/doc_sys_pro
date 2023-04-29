@@ -1,13 +1,33 @@
 import 'package:doc_sys_pro/loginController.dart';
 import 'package:doc_sys_pro/main.dart';
+import 'package:doc_sys_pro/models/folder.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 /* Class responsible for creating a page of user accont*/
 class LoginPage extends StatelessWidget {
   final controller = Get.put(LoginController());
 
   Map<String, String?> userData = {};
+
+  Future<void> _createEmptyFolder(var userId) async {
+    var foldersBox = await Hive.openBox('your_folders');
+    
+    // Create empty folder "unsorted" when app first launched
+    if (!foldersBox.containsKey('unsorted')) {
+      foldersBox.put(
+        'unsorted',
+        Folder(
+          name: 'Невідсортоване', 
+          number: userId, 
+          docsInFolder: [{}]
+        )
+      );
+    }
+
+    foldersBox.close();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +48,10 @@ class LoginPage extends StatelessWidget {
                 'id': controller.googleAccount.value!.id,
                 'name' : controller.googleAccount.value!.displayName,
                 'email' : controller.googleAccount.value!.email,
+                'avatar': controller.googleAccount.value!.photoUrl,
               });
+
+              _createEmptyFolder(controller.googleAccount.value!.id);
 
               return buildProfileView(context);
             }
@@ -61,7 +84,15 @@ class LoginPage extends StatelessWidget {
           const SizedBox(height: 16),
 
           ActionChip(
-            label: const Text('Перейти до застосунку'),
+            label: const Text(
+              'Перейти до застосунку',
+              style: TextStyle(
+                color: Colors.white, 
+                fontWeight: FontWeight.normal
+              )
+            ),
+            
+            backgroundColor: const Color.fromARGB(255, 25, 25, 25),
             onPressed: () {
               Navigator.push(
                 context,
@@ -74,7 +105,15 @@ class LoginPage extends StatelessWidget {
           ),
 
           ActionChip(
-            label: const Text('Вийти з акаунту'),
+            label: const Text(
+              'Вийти з акаунту', 
+              style: TextStyle(
+                color: Colors.white, 
+                fontWeight: FontWeight.normal
+              )
+            ),
+            
+            backgroundColor: const Color.fromARGB(255, 25, 25, 25),
             onPressed: () {
               controller.logout();
             },

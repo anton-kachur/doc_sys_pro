@@ -1,8 +1,8 @@
-import 'package:doc_sys_pro/main.dart';
 import 'package:doc_sys_pro/models/document.dart';
 import 'package:doc_sys_pro/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 
 
 class DocumentSettings extends StatefulWidget {
@@ -17,25 +17,50 @@ class DocumentSettings extends StatefulWidget {
 
 class _DocumentSettingsState extends State<DocumentSettings> {
   late Box<Document> _documentsBox;
+  List<Document> _documentsList = [];
+
   Map<String, Object> fieldValues = {
     'name': '',
     'type': '',
     'docNumber': '',
     'dateFrom': '',
     'dateTo': '',
+    'description': '',
     'image': '',
-    'description': ''
   };
 
+  // Get all user's documents from DB
   Future _getDataFromBox() async {
     _documentsBox = await Hive.openBox('your_documents');
+
+    for (var item in _documentsBox.values) {
+      if (widget.userData['id'] == item.number) {
+        
+        if (_documentsList.contains(item)) {
+          
+          break;
+        } else {
+          _documentsList.add(item);
+        }
+      }
+    }
   }
 
+  // Edit an existing document and save changes to DB
   void _editDocument() {
     List<String> formattedDateFrom = '${fieldValues['dateFrom']}'.split('-');
     List<String> formattedDateTo = '${fieldValues['dateTo']}'.split('-');
+    Map isAllCorrect = editDocInputCheck(
+      input: fieldValues, 
+      documentsList: _documentsList,
+      dateFrom: formattedDateFrom, 
+      dateTo: formattedDateTo
+    );
 
-    _documentsBox.putAt(
+    if (isAllCorrect['all_correct'] == false ) {
+      alert(context, isAllCorrect);
+    } else {
+      _documentsBox.putAt(
         widget.index,
         Document(
             name: fieldValues['name'] == ''
@@ -68,12 +93,23 @@ class _DocumentSettingsState extends State<DocumentSettings> {
             description: fieldValues['description'] == ''
                 ? _documentsBox.getAt(widget.index)!.description
                 : '${fieldValues['description']}'
-    ));
+      ));
+
+      redirect(context: context, userData: widget.userData);
+    }
   }
 
-  void redirect() {
-    Navigator.pop(context, false);
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (BuildContext context) => HomeScreen(widget.userData)));
+  // Get doc image from gallery
+  void _getFromGallery() async {
+    PickedFile? pickedFile = await ImagePicker().getImage(
+      source: ImageSource.gallery,
+      maxHeight: 1800,
+      maxWidth: 1800,
+    );
+
+    if (pickedFile != null) {
+      fieldValues['image'] = pickedFile.path;
+    }
   }
 
   @override
@@ -91,41 +127,41 @@ class _DocumentSettingsState extends State<DocumentSettings> {
                   'Помилка: ${snapshot.error}', context);
             } else {
               return Scaffold(
-                  appBar: AppBar(
-                    toolbarHeight: 60,
-                    title: const Text('Редагувати дані'),
-                    centerTitle: true,
-                    backgroundColor: const Color.fromARGB(255, 40, 40, 40),
+                appBar: AppBar(
+                  toolbarHeight: 60,
+                  title: const Text('Редагувати документ'),
+                  centerTitle: true,
+                  backgroundColor: const Color.fromARGB(255, 40, 40, 40),
+                ),
+                
+                body: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      textFieldsBlock(),
+                    ]
                   ),
-                  
-                  body: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        textFieldsBlock(),
-                      ]
-                    ),
-                  ),
+                ),
 
-                  floatingActionButton: FloatingActionButton.large(
-                    backgroundColor: const Color.fromARGB(255, 58, 58, 58),
-                    child: const Icon(Icons.edit_rounded),
-                    onPressed: () {
-                      _editDocument();
-                      redirect();
-                    }
-                  )
-              );
-            }
+                floatingActionButton: FloatingActionButton.large(
+                  backgroundColor: const Color.fromARGB(255, 58, 58, 58),
+                  child: const Icon(Icons.edit_rounded),
+                  onPressed: () {
+                    _editDocument();
+                  }
+                )
+            );
           }
-        });
+        }
+      });
   }
 
+  // Group text fields in one column
   Widget textFieldsBlock() {
     List<String> inputFieldText = [
       'Назва', 'Тип документу', 'Номер','Дата видачі (дд-мм-рррр)', 
-      'Дійсний до (дд-мм-рррр)', 'Опис', 'Посилання на фото'];
+      'Дійсний до (дд-мм-рррр)', 'Опис'];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center, 
@@ -135,18 +171,29 @@ class _DocumentSettingsState extends State<DocumentSettings> {
               for (int i = 0; i < inputFieldText.length; i++)
                 textField(
                   {
-                    'textInputAction' : inputFieldText[i] == 'Посилання на фото' ? TextInputAction.done : TextInputAction.next,
+                    'textInputAction' : TextInputAction.next,
                     'labelText' : inputFieldText[i],
                     'keyboardType' : inputFieldText[i] == 'Опис' ? TextInputType.multiline  : TextInputType.text,
                     'inputValue' : fieldValues.entries.elementAt(i).key
                   }
                 ),
+              
+              ElevatedButton(
+                onPressed: () {
+                  _getFromGallery();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromARGB(255, 25, 25, 25),
+                ),
+                child: const Text('Вибрати зображення'),
+              ), 
+
             ]
           ),
     ]);
   }
 
-
+  // Text field widget with formatters and decorations
   Widget textField(Map args) {
     
     return Container(
@@ -177,4 +224,5 @@ class _DocumentSettingsState extends State<DocumentSettings> {
         )
     );
   }
+
 }

@@ -38,4 +38,10 @@ class Document extends HiveObject {
     required this.image,
     required this.description,
   });
+
+  @override
+  String toString() {
+    return 'Name: $name, number: $type,\nid: $number, docNumber: $docNumber\n' + 
+    'from: $dateFrom, to: $dateTo,\nimage: $image,\ndescription: $description\n';
+  }
 }
